@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Waste Classifier</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        color: #333;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1),
+          0 0 0 1px rgba(255, 255, 255, 0.2);
+        padding: 24px;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .container:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15),
+          0 0 0 1px rgba(255, 255, 255, 0.3);
+      }
+
+      h1 {
+        font-size: clamp(1.8rem, 5vw, 2.2rem);
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 12px;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        color: #6b7280;
+        font-size: clamp(0.9rem, 3vw, 1rem);
+        margin-bottom: 24px;
+        font-weight: 400;
+        line-height: 1.5;
+      }
+
+      .upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 32px 16px;
+        margin-bottom: 24px;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .upload-area::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.4),
+          transparent
+        );
+        transition: left 0.5s ease;
+      }
+
+      .upload-area:hover {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+        transform: scale(1.02);
+      }
+
+      .upload-area:hover::before {
+        left: 100%;
+      }
+
+      .upload-area.dragover {
+        border-color: #4f46e5;
+        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        transform: scale(1.02);
+      }
+
+      .upload-icon {
+        font-size: clamp(2rem, 6vw, 2.5rem);
+        margin-bottom: 12px;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+      }
+
+      .upload-area:hover .upload-icon {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      .upload-text {
+        font-size: clamp(0.9rem, 3vw, 1rem);
+        color: #4b5563;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      .upload-hint {
+        font-size: clamp(0.75rem, 2.5vw, 0.85rem);
+        color: #9ca3af;
+        font-weight: 400;
+      }
+
+      #file-input {
+        display: none;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: clamp(0.9rem, 3vw, 1rem);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+        min-width: 120px;
+        width: 100%;
+        max-width: 200px;
+      }
+
+      .btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn:hover::before {
+        left: 100%;
+      }
+
+      .btn:active {
+        transform: translateY(0);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .result-container {
+        margin-top: 24px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #result {
+        font-size: clamp(0.9rem, 3vw, 1.1rem);
+        font-weight: 600;
+        padding: 16px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border: 1px solid #6ee7b7;
+        color: #065f46;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.5s ease;
+        width: 100%;
+      }
+
+      #result.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #error {
+        font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+        font-weight: 500;
+        padding: 16px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border: 1px solid #f87171;
+        color: #991b1b;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.5s ease;
+        width: 100%;
+      }
+
+      #error.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .loading-spinner {
+        display: none;
+        width: 32px;
+        height: 32px;
+        border: 3px solid #f3f4f6;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      .loading-spinner.show {
+        display: block;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .preview-image {
+        max-width: 100%;
+        max-height: 180px;
+        border-radius: 10px;
+        margin: 16px 0;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transform: scale(0.8);
+        transition: all 0.5s ease;
+      }
+
+      .preview-image.show {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .category-icons {
+        display: flex;
+        justify-content: space-around;
+        margin: 24px 0;
+        opacity: 0.8;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .category-item {
+        text-align: center;
+        flex: 1;
+        padding: 8px;
+        min-width: 80px;
+      }
+
+      .category-item .icon {
+        font-size: clamp(1.5rem, 4vw, 1.8rem);
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      .category-item .label {
+        font-size: clamp(0.75rem, 2.5vw, 0.85rem);
+        color: #6b7280;
+        font-weight: 500;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 20px;
+          max-width: 90%;
+          margin: 8px;
+        }
+
+        h1 {
+          font-size: clamp(1.6rem, 4.5vw, 2rem);
+        }
+
+        .upload-area {
+          padding: 24px 12px;
+        }
+
+        .btn {
+          padding: 10px 20px;
+          max-width: 180px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .container {
+          padding: 16px;
+          border-radius: 16px;
+        }
+
+        .upload-area {
+          padding: 20px 10px;
+        }
+
+        .category-icons {
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .category-item {
+          min-width: 60px;
+        }
+
+        .preview-image {
+          max-height: 150px;
+        }
+      }
+
+      .fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container fade-in">
+      <h1>Smart Waste Classifier</h1>
+      <p class="subtitle">AI-powered waste sorting for a sustainable future</p>
+
+      <div class="category-icons">
+        <div class="category-item">
+          <span class="icon">♻️</span>
+          <span class="label">Plastic</span>
+        </div>
+        <div class="category-item">
+          <span class="icon">🍃</span>
+          <span class="label">Organic</span>
+        </div>
+        <div class="category-item">
+          <span class="icon">🔧</span>
+          <span class="label">Metal</span>
+        </div>
+      </div>
+
+      <form id="upload-form">
+        <div class="upload-area" id="upload-area">
+          <div class="upload-icon">📸</div>
+          <div class="upload-text">Drop your image here</div>
+          <div class="upload-hint">or tap to browse files</div>
+          <input type="file" id="file-input" accept="image/*" />
+        </div>
+
+        <img
+          id="preview-image"
+          class="preview-image"
+          style="display: none"
+          alt="Preview"
+        />
+
+        <button type="submit" class="btn" id="classify-btn">
+          <span id="btn-text">Classify Waste</span>
+          <div class="loading-spinner" id="loading-spinner"></div>
+        </button>
+      </form>
+
+      <div class="result-container">
+        <div id="result"></div>
+        <div id="error"></div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("upload-form");
+      const uploadArea = document.getElementById("upload-area");
+      const fileInput = document.getElementById("file-input");
+      const previewImage = document.getElementById("preview-image");
+      const resultDiv = document.getElementById("result");
+      const errorDiv = document.getElementById("error");
+      const classifyBtn = document.getElementById("classify-btn");
+      const btnText = document.getElementById("btn-text");
+      const loadingSpinner = document.getElementById("loading-spinner");
+
+      // File upload interactions
+      uploadArea.addEventListener("click", () => fileInput.click());
+
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+
+      uploadArea.addEventListener("dragleave", () => {
+        uploadArea.classList.remove("dragover");
+      });
+
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          fileInput.files = files;
+          handleFileSelect(files[0]);
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          handleFileSelect(e.target.files[0]);
+        }
+      });
+
+      function handleFileSelect(file) {
+        if (file && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewImage.style.display = "block";
+            setTimeout(() => previewImage.classList.add("show"), 50);
+
+            // Update upload area
+            uploadArea.innerHTML = `
+                        <div class="upload-icon">✅</div>
+                        <div class="upload-text">Image selected</div>
+                        <div class="upload-hint">Tap to change image</div>
+                        <input type="file" id="file-input" accept="image/*">
+                    `;
+            // Reattach event listener to new input
+            const newInput = uploadArea.querySelector("#file-input");
+            newInput.addEventListener("change", (e) => {
+              if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+              }
+            });
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      function showResult(message, isError = false) {
+        hideMessages();
+        const targetDiv = isError ? errorDiv : resultDiv;
+        targetDiv.textContent = message;
+        setTimeout(() => targetDiv.classList.add("show"), 50);
+      }
+
+      function hideMessages() {
+        resultDiv.classList.remove("show");
+        errorDiv.classList.remove("show");
+      }
+
+      function setLoading(loading) {
+        if (loading) {
+          btnText.style.opacity = "0";
+          loadingSpinner.classList.add("show");
+          classifyBtn.disabled = true;
+        } else {
+          btnText.style.opacity = "1";
+          loadingSpinner.classList.remove("show");
+          classifyBtn.disabled = false;
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        hideMessages();
+
+        const file = fileInput.files[0];
+        if (!file) {
+          showResult("Please select an image first", true);
+          return;
+        }
+
+        setLoading(true);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const response = await fetch("/predict", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) throw new Error("Prediction failed");
+
+          const data = await response.json();
+
+          if (data.error) {
+            showResult(data.error, true);
+          } else {
+            const confidence = Math.round(parseFloat(data.confidence) * 100);
+            showResult(
+              `🎯 ${data.category.toUpperCase()} • ${confidence}% confidence`
+            );
+          }
+        } catch (err) {
+          showResult(`❌ ${err.message}`, true);
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      // Add some interactive feedback
+      document.addEventListener("DOMContentLoaded", () => {
+        const container = document.querySelector(".container");
+        container.style.opacity = "0";
+        container.style.transform = "translateY(20px)";
+
+        setTimeout(() => {
+          container.style.transition = "all 0.6s ease";
+          container.style.opacity = "1";
+          container.style.transform = "translateY(0)";
+        }, 100);
+      });
+    </script>
+  </body>
+</html>
